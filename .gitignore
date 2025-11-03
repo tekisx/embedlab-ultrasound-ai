@@ -155,4 +155,5 @@ logs/
 cache/
 
 # Compiled documentation
-*.pdf
+*.pdftest_index/
+full_index/
