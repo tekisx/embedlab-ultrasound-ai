@@ -72,7 +72,7 @@ def cli(ctx, config, index_path):
     ctx.obj.index_path = Path(index_path)
 
 
-@cli.command()
+@cli.command('embed')
 @click.argument('image_paths', nargs=-1, required=True,
                 type=click.Path(exists=True))
 @click.option('--batch-size', '-b', default=32,
@@ -80,8 +80,8 @@ def cli(ctx, config, index_path):
 @click.option('--no-embedding', is_flag=True,
               help='Skip embedding generation')
 @click.pass_obj
-def add(config, image_paths, batch_size, no_embedding):
-    """Add images to the embedding index."""
+def embed_cmd(config, image_paths, batch_size, no_embedding):
+    """Compute embeddings for images and persist to index."""
     manager = IndexManager(config, config.index_path)
 
     # Convert to Path objects
@@ -129,7 +129,7 @@ def add(config, image_paths, batch_size, no_embedding):
 
     # Save index
     manager.save_index()
-    console.print(f"\n[green]✓ Index saved to {config.index_path}[/green]")
+    console.print(f"\n[green][OK] Index saved to {config.index_path}[/green]")
 
 
 @cli.command()
@@ -178,44 +178,101 @@ def search(config, query_image, top_k, threshold):
     console.print(table)
 
 
-@cli.command()
-@click.option('--threshold', '-t', default=0.95,
+@cli.command('analyze')
+@click.option('--dup-threshold', default=0.92,
               help='Similarity threshold for duplicates')
+@click.option('--anomaly-top', default=8,
+              help='Number of top anomalies to return')
+@click.option('--k', default=5,
+              help='Number of neighbors for anomaly detection')
+@click.option('--json', 'output_json', is_flag=True,
+              help='Output as JSON')
 @click.pass_obj
-def duplicates(config, threshold):
-    """Find duplicate images in the index."""
+def analyze(config, dup_threshold, anomaly_top, k, output_json):
+    """Analyze index for duplicates and anomalies."""
     manager = IndexManager(config, config.index_path)
 
     # Load existing index
     manager.load_index()
 
-    console.print(f"\n[cyan]Finding duplicates with threshold {threshold}[/cyan]")
-
     # Find duplicates
-    with console.status("Analyzing...", spinner="dots"):
-        duplicates = manager.find_duplicates(threshold=threshold)
+    console.print(f"\n[cyan]Finding duplicates with threshold {dup_threshold}[/cyan]")
 
-    if not duplicates:
-        console.print("[green]No duplicates found[/green]")
-        return
+    with console.status("Analyzing duplicates...", spinner="dots"):
+        duplicate_pairs = manager.find_duplicates(threshold=dup_threshold)
 
-    # Display duplicates
-    table = Table(title=f"Found {len(duplicates)} Duplicate Pairs")
-    table.add_column("Image 1", style="yellow")
-    table.add_column("Image 2", style="yellow")
-    table.add_column("Similarity", style="red")
+    # Convert duplicate pairs to groups for spec compliance
+    duplicate_groups = []
+    if duplicate_pairs:
+        # Group connected duplicates
+        groups = {}
+        for pair in duplicate_pairs:
+            hash1, hash2 = pair['image1_hash'], pair['image2_hash']
+            found_group = None
 
-    for dup in duplicates[:10]:  # Show first 10
-        table.add_row(
-            dup['image1_hash'][:16] + "...",
-            dup['image2_hash'][:16] + "...",
-            f"{dup['similarity']:.4f}"
-        )
+            # Find if either hash is already in a group
+            for group_id, group_hashes in groups.items():
+                if hash1 in group_hashes or hash2 in group_hashes:
+                    found_group = group_id
+                    break
 
-    console.print(table)
+            if found_group:
+                groups[found_group].add(hash1)
+                groups[found_group].add(hash2)
+            else:
+                groups[len(groups)] = {hash1, hash2}
 
-    if len(duplicates) > 10:
-        console.print(f"\n[dim]... and {len(duplicates) - 10} more pairs[/dim]")
+        # Convert sets to lists
+        duplicate_groups = [list(group) for group in groups.values()]
+
+    # Find anomalies
+    console.print(f"\n[cyan]Finding top {anomaly_top} anomalies with k={k} neighbors[/cyan]")
+
+    with console.status("Analyzing anomalies...", spinner="dots"):
+        anomaly_list = manager.searcher.find_anomalies(k=k, top_n=anomaly_top)
+
+    # Format output
+    if output_json:
+        # Output as JSON matching the spec exactly
+        output = {
+            "duplicate_groups": duplicate_groups,
+            "anomalies": [hash for hash, score in anomaly_list]
+        }
+        console.print_json(data=output)
+    else:
+        # Pretty print for CLI
+        if duplicate_groups:
+            console.print(f"\n[green]Found {len(duplicate_groups)} duplicate groups:[/green]")
+            table = Table(title="Duplicate Groups")
+            table.add_column("Group", style="cyan")
+            table.add_column("Images", style="yellow")
+
+            for i, group in enumerate(duplicate_groups[:5], 1):  # Show first 5 groups
+                images_str = ", ".join([h[:16] + "..." for h in group[:3]])
+                if len(group) > 3:
+                    images_str += f" (+{len(group)-3} more)"
+                table.add_row(str(i), images_str)
+
+            console.print(table)
+
+            if len(duplicate_groups) > 5:
+                console.print(f"[dim]... and {len(duplicate_groups) - 5} more groups[/dim]")
+        else:
+            console.print("[green]No duplicates found[/green]")
+
+        if anomaly_list:
+            console.print(f"\n[red]Top {len(anomaly_list)} Anomalies:[/red]")
+            table = Table(title="Most Isolated Images")
+            table.add_column("Rank", style="cyan", width=6)
+            table.add_column("Image Hash", style="yellow")
+            table.add_column("Anomaly Score", justify="right")
+
+            for i, (hash, score) in enumerate(anomaly_list, 1):
+                table.add_row(str(i), hash[:32] + "...", f"{score:.4f}")
+
+            console.print(table)
+        else:
+            console.print("[green]No anomalies found[/green]")
 
 
 @cli.command()
@@ -273,12 +330,12 @@ def validate(config):
         validation = manager.validate_index()
 
     if validation['valid']:
-        console.print("[green]✓ Index validation passed![/green]")
+        console.print("[green][OK] Index validation passed![/green]")
     else:
-        console.print("[red]✗ Index validation failed![/red]")
+        console.print("[red][FAIL] Index validation failed![/red]")
         console.print("\nIssues found:")
         for issue in validation['issues']:
-            console.print(f"  • {issue}", style="yellow")
+            console.print(f"  - {issue}", style="yellow")
 
     # Show counts
     console.print(f"\nImages in registry: {validation['n_images']}")
@@ -301,7 +358,7 @@ def export(config, output_path):
     with console.status("Exporting...", spinner="dots"):
         manager.save_index(output_path)
 
-    console.print(f"[green]✓ Index exported successfully[/green]")
+    console.print(f"[green][OK] Index exported successfully[/green]")
 
 
 @cli.command()
@@ -320,7 +377,7 @@ def import_index(config, import_path):
     # Get statistics
     stats = manager.get_statistics()
 
-    console.print(f"[green]✓ Imported {stats['n_images']} images successfully[/green]")
+    console.print(f"[green][OK] Imported {stats['n_images']} images successfully[/green]")
 
 
 @cli.command()

@@ -17,26 +17,27 @@ kaggle datasets download -d aryashah2k/breast-ultrasound-images-dataset -p asset
 
 ### 3. Run Tests
 ```bash
-# Run all tests (57 tests, 100% passing)
+# Run all tests (68 tests, 100% passing)
 python -m pytest tests/unit/ -v
 
 # Run specific test suites
-python -m pytest tests/unit/test_image_processor.py -v  # Image processing (9 tests)
-python -m pytest tests/unit/test_embedding_engine.py -v  # Embeddings (14 tests)
-python -m pytest tests/unit/test_logging.py -v          # PHI safety (18 tests)
-python -m pytest tests/unit/test_config.py -v           # Config/seeds (16 tests)
+python -m pytest tests/unit/test_image_processor.py -v     # Image processing (9 tests)
+python -m pytest tests/unit/test_embedding_engine.py -v     # Embeddings (14 tests)
+python -m pytest tests/unit/test_logging.py -v             # PHI safety (18 tests)
+python -m pytest tests/unit/test_config.py -v              # Config/seeds (16 tests)
+python -m pytest tests/unit/test_similarity_search.py -v   # Similarity & anomalies (11 tests)
 ```
 
 ### 4. Use the CLI
 ```bash
 # Add images to embedding index (core: embed command)
-python cli/embedlab.py add assets/images/breast_ultrasound/ --batch-size 32
+python cli/embedlab.py embed assets/images/breast_ultrasound/ --batch-size 32
 
 # Search for similar images (core: search command)
 python cli/embedlab.py search path/to/query.png --top-k 5 --threshold 0.7
 
-# Find duplicates (core: part of analyze command)
-python cli/embedlab.py duplicates --threshold 0.92
+# Find duplicates and anomalies (core: analyze command)
+python cli/embedlab.py analyze --dup-threshold 0.92 --anomaly-top 8 --json
 
 # Additional commands implemented
 python cli/embedlab.py stats       # Show index statistics
@@ -53,8 +54,9 @@ python cli/embedlab.py info        # System information
 1. **Generates embeddings** from ultrasound images using ResNet50 (2048-dim vectors)
 2. **Finds similar images** using cosine similarity search
 3. **Detects duplicates** with configurable thresholds
-4. **Ensures PHI safety** by hashing all file paths in logs (no patient data exposed)
-5. **Handles medical images** with quality validation specific to ultrasounds
+4. **Finds anomalous images** using k-NN distance analysis
+5. **Ensures PHI safety** by hashing all file paths in logs (no patient data exposed)
+6. **Handles medical images** with quality validation specific to ultrasounds
 
 ## Implementation Details
 
@@ -64,17 +66,17 @@ As specified in the interview requirements:
 
 | Requirement | Implementation | Details |
 |-------------|----------------|---------|
-| **Embed Command** | `add` command | Computes embeddings for images, persists to index |
+| **Embed Command** | `embed` command | Computes embeddings for images, persists to index |
 | **Search Command** | `search` command | Returns top-k similar images with cosine similarity |
-| **Analyze Command** | `duplicates` command | Detects near-duplicate groups using threshold |
+| **Analyze Command** | `analyze` command | Detects duplicate groups AND anomalies (k-NN based) |
 | **Vision Backbone** | ResNet50 | Pretrained on ImageNet, 2048-dim embeddings |
 | **Cosine Similarity** | L2 + dot product | Normalized vectors for accurate similarity |
 | **Deterministic** | Seed management | Fixed seeds for Python, NumPy, PyTorch |
 | **Index Persistence** | Save/Load | Embeddings cached to disk as .npy files |
-| **JSON Output** | All commands | Structured JSON with paths and scores |
+| **JSON Output** | All commands | Structured JSON with paths/hashes and scores |
 | **Performance** | <90s embed, <1s search | Batch processing, caching, memory mapping |
 
-### Show-Off Features Implemented 🚀
+### Show-Off Features Implemented
 
 From the optional enhancements list, we implemented:
 
@@ -84,6 +86,7 @@ From the optional enhancements list, we implemented:
 - ✅ **On-disk Index + Memory Map**: NumPy arrays with memory mapping
 - ✅ **Type Hints**: mypy-compatible throughout codebase
 - ✅ **CLI Polish**: Rich UI with progress bars (exceeded basic argparse requirement)
+- ✅ **k-NN Anomaly Detection**: Finds most isolated images based on neighbor distances
 
 #### Advanced Features (60+ min)
 - ✅ **Quality & Safety Filters**: Medical-specific validation

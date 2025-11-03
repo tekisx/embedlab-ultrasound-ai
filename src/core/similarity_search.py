@@ -54,6 +54,11 @@ class SimilaritySearch:
             config: Configuration object
             distance_metric: Distance metric to use ("cosine", "euclidean")
         """
+        # Validate distance metric
+        valid_metrics = ["cosine", "euclidean"]
+        if distance_metric not in valid_metrics:
+            raise ValueError(f"Invalid distance metric: {distance_metric}. Must be one of {valid_metrics}")
+
         self.config = config or Config()
         self.distance_metric = distance_metric
 
@@ -199,7 +204,7 @@ class SimilaritySearch:
         return results
 
     def find_duplicates(self,
-                       threshold: float = 0.95) -> List[Tuple[str, str, float]]:
+                       threshold: float = 0.95) -> List[Dict]:
         """
         Find potential duplicate images based on embedding similarity.
 
@@ -207,7 +212,7 @@ class SimilaritySearch:
             threshold: Similarity threshold for duplicates
 
         Returns:
-            List of (hash1, hash2, similarity) tuples
+            List of dictionaries with image1_hash, image2_hash, and similarity
         """
         if self.embeddings is None or len(self.embeddings) < 2:
             return []
@@ -223,11 +228,11 @@ class SimilaritySearch:
                 )
 
                 if similarity >= threshold:
-                    duplicates.append((
-                        self.image_hashes[i],
-                        self.image_hashes[j],
-                        float(similarity)
-                    ))
+                    duplicates.append({
+                        'image1_hash': self.image_hashes[i],
+                        'image2_hash': self.image_hashes[j],
+                        'similarity': float(similarity)
+                    })
 
         logger.info(f"Found {len(duplicates)} potential duplicates")
         return duplicates
@@ -255,6 +260,65 @@ class SimilaritySearch:
         self.index_built = False  # Need to rebuild index
         logger.info(f"Removed embedding for {image_hash}")
         return True
+
+    def find_anomalies(self, k: int = 5, top_n: int = 8) -> List[Tuple[str, float]]:
+        """
+        Find the most isolated images based on k-NN distances.
+
+        Anomalies are images with highest mean distance to their k nearest neighbors.
+
+        Args:
+            k: Number of nearest neighbors to consider
+            top_n: Number of top anomalies to return
+
+        Returns:
+            List of (image_hash, anomaly_score) tuples
+        """
+        if self.embeddings is None or len(self.embeddings) == 0:
+            logger.warning("No embeddings available for anomaly detection")
+            return []
+
+        n_samples = len(self.embeddings)
+        if n_samples <= k:
+            logger.warning(f"Not enough samples ({n_samples}) for k={k} anomaly detection")
+            k = max(1, n_samples - 1)
+
+        anomaly_scores = []
+
+        # For each image, compute mean distance to k-NN
+        for idx in range(n_samples):
+            # Compute distances to all other images
+            distances = []
+            for other_idx in range(n_samples):
+                if idx != other_idx:
+                    # Use cosine distance (1 - cosine similarity)
+                    similarity = self._compute_similarity(
+                        self.embeddings[idx],
+                        self.embeddings[other_idx]
+                    )
+                    distance = 1.0 - similarity
+                    distances.append(distance)
+
+            if not distances:
+                continue
+
+            # Sort distances and take mean of k nearest
+            distances.sort()
+            k_nearest = min(k, len(distances))
+            k_nearest_distances = distances[:k_nearest]
+            mean_distance = np.mean(k_nearest_distances) if k_nearest_distances else 0
+
+            # Store with image hash
+            image_hash = self.image_hashes[idx]
+            anomaly_scores.append((image_hash, mean_distance))
+
+        # Sort by anomaly score (highest = most anomalous)
+        anomaly_scores.sort(key=lambda x: x[1], reverse=True)
+
+        # Log results
+        logger.info(f"Found {len(anomaly_scores)} anomaly scores, returning top {top_n}")
+
+        return anomaly_scores[:top_n]
 
     def save_index(self, output_path: Union[str, Path]) -> None:
         """

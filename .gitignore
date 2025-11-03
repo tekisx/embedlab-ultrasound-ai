@@ -37,6 +37,9 @@ env/
 .vscode/
 *.code-workspace
 
+# Claude AI
+.claude/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 *.ipynb
@@ -112,8 +115,7 @@ metrics_*.json
 # Documentation builds
 docs/_build/
 site/
-documentation/*.jpg
-documentation/*.png
+documentation/
 
 # Package manager files
 poetry.lock
@@ -140,6 +142,9 @@ assets/real_dataset_analysis.json
 COMPREHENSIVE_REVIEW.md
 PROJECT_SUMMARY.md
 documentation/PROGRESS_SUMMARY.md
+MISSING_CORE_FEATURES_PLAN.md
+documentation/IMAGE_ACQUISITION_PLAN.md
+documentation/IMPLEMENTATION_PLAN.md
 
 # Logs
 logs/
