@@ -30,22 +30,14 @@ python -m pytest tests/unit/test_similarity_search.py -v   # Similarity & anomal
 
 ### 4. Use the CLI
 ```bash
-# Add images to embedding index (core: embed command)
-python cli/embedlab.py embed assets/images/breast_ultrasound/ --batch-size 32
+# Generate embeddings for images (core: embed command)
+python embedlab.py embed --images-dir ./assets/images --out ./index
 
 # Search for similar images (core: search command)
-python cli/embedlab.py search path/to/query.png --top-k 5 --threshold 0.7
+python embedlab.py search --index ./index --query-dir ./assets/queries --k 5 --json
 
 # Find duplicates and anomalies (core: analyze command)
-python cli/embedlab.py analyze --dup-threshold 0.92 --anomaly-top 8 --json
-
-# Additional commands implemented
-python cli/embedlab.py stats       # Show index statistics
-python cli/embedlab.py benchmark   # Performance testing
-python cli/embedlab.py validate    # Index integrity check
-python cli/embedlab.py export      # Export index
-python cli/embedlab.py import-index # Import saved index
-python cli/embedlab.py info        # System information
+python embedlab.py analyze --index ./index --dup-threshold 0.92 --anomaly-top 8 --json
 ```
 
 ## What This Does

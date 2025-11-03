@@ -494,6 +494,20 @@ class IndexManager:
 
         return validation_result
 
+    def get_image_path(self, image_hash: str) -> Optional[str]:
+        """
+        Get original image path for a given hash.
+
+        Args:
+            image_hash: The image hash
+
+        Returns:
+            Original image path or None if not found
+        """
+        if image_hash in self.image_registry:
+            return self.image_registry[image_hash].get('original_path')
+        return None
+
 
 def create_index_manager(config: Optional[Config] = None,
                         index_path: Optional[Union[str, Path]] = None) -> IndexManager:

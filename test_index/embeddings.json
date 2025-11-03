@@ -1,0 +1,51 @@
+{
+  "image_hashes": [
+    "619e588efd75f4e8",
+    "7ddb11284352a2ca",
+    "f475e053de710060"
+  ],
+  "metadata": [
+    {
+      "file_hash": "619e588efd75f4e8",
+      "phi_safe_id": "619e588efd75f4e8",
+      "width": 562,
+      "height": 471,
+      "channels": 3,
+      "format": "PNG",
+      "size_kb": 326.51,
+      "quality_score": 0.956,
+      "is_valid": true,
+      "processing_time_ms": 38.73,
+      "warning_count": 1
+    },
+    {
+      "file_hash": "7ddb11284352a2ca",
+      "phi_safe_id": "7ddb11284352a2ca",
+      "width": 557,
+      "height": 473,
+      "channels": 3,
+      "format": "PNG",
+      "size_kb": 337.1,
+      "quality_score": 0.956,
+      "is_valid": true,
+      "processing_time_ms": 28.76,
+      "warning_count": 1
+    },
+    {
+      "file_hash": "f475e053de710060",
+      "phi_safe_id": "f475e053de710060",
+      "width": 558,
+      "height": 471,
+      "channels": 3,
+      "format": "PNG",
+      "size_kb": 316.1,
+      "quality_score": 0.956,
+      "is_valid": true,
+      "processing_time_ms": 29.24,
+      "warning_count": 1
+    }
+  ],
+  "distance_metric": "cosine",
+  "n_embeddings": 3,
+  "embedding_dim": 2048
+}
