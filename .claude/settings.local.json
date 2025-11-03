@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pip:*)",
+      "Bash(git --version:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python:*)",
+      "Bash(code:*)",
+      "Bash(gh:*)",
+      "Bash(git config:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Skill(web-research)",
+      "mcp__firecrawl__firecrawl_search",
+      "mcp__firecrawl__firecrawl_scrape",
+      "Bash(pip install:*)",
+      "Bash(if [ ! -f ~/.kaggle/kaggle.json ])",
+      "Bash(then echo \"No Kaggle credentials found. Need to set up.\")",
+      "Bash(else echo \"Kaggle credentials found\")",
+      "Bash(fi)",
+      "Bash(kaggle datasets download:*)",
+      "Bash(find:*)",
+      "Bash(awk:*)",
+      "Bash(dir /s /b:*)",
+      "Bash(nul)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
