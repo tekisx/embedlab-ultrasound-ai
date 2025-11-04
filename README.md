@@ -31,7 +31,7 @@ EmbedLab generates embeddings from medical images using ResNet50, finds similar 
 
 ## Implementation
 
-### Core Requirements (from transcription)
+### Core Requirements
 - ✅ **embed**: Computes embeddings, persists to index
 - ✅ **search**: Returns top-k similar images with cosine similarity
 - ✅ **analyze**: Detects duplicate groups AND anomalies

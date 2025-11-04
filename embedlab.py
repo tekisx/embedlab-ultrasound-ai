@@ -2,7 +2,7 @@
 """
 EmbedLab - Image Embedding Laboratory CLI
 
-Matches the exact interface specified in the transcription.
+Medical image embedding and similarity search tool.
 """
 
 import click
@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 @click.pass_context
 def cli(ctx):
     """EmbedLab - Image embedding and similarity search tool."""
-    # Don't show banner to match transcription expectations
+    # Don't show banner for clean CLI output
     ctx.ensure_object(dict)
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
@@ -105,7 +105,7 @@ def search(ctx, index, query_dir, k, output_json):
         # Search for similar images
         results = manager.search(str(query_path), top_k=k)
 
-        # Format output as specified in transcription
+        # Format output as JSON structure
         if output_json:
             output = {
                 "query": str(query_path).replace('\\', '/'),
